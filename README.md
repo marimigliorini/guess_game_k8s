@@ -1,4 +1,3 @@
-Aqui está um exemplo de um arquivo `README.md` para o seu jogo:
 
 ---
 
@@ -13,100 +12,76 @@ Este é um simples jogo de adivinhação desenvolvido utilizando o framework Fla
 - As senhas são armazenadas  utilizando base64.
 - As adivinhações incorretas retornam uma mensagem com dicas.
   
-## Requisitos
+## Arquitetura e Design
 
-- Python 3.8+ - 3.12
-- Flask
-- Um banco de dados local (ou um mecanismo de armazenamento configurado em `current_app.db`)
-- node 18.17.0
+A solução foi desenvolvida com foco em práticas modernas de DevOps e arquitetura de microsserviços.
+
+#### 1. Escolha de Serviços:
+
+- **Frontend** (NGINX + React): Atua como Proxy Reverso e servidor de ativos estáticos. Centraliza o tráfego na porta 80 e roteia requisições dinamicamente.
+
+- **Backend** (Backend Flask): Responsável pela lógica do jogo e persistência. Desacoplado da interface, permitindo atualizações independentes.
+
+- **DB** (Postgres): Banco de dados relacional para armazenamento seguro e estruturado dos dados do jogo.
+
+#### 2. Redes e Comunicação:
+
+Foi utilizada uma rede interna do Docker Compose para isolar os serviços. O backend e o banco não expõem portas externamente, aumentando a segurança. O NGINX resolve dinamicamente o endereço do serviço web através do DNS interno do Docker, o que permite escalabilidade sem interrupções.
+
+#### 3. Persistência de Dados:
+
+Volumes Nomeados (postgres_data) foram usados para mapear os dados do Postgres para o host. Isso garante que, mesmo se os containers forem destruídos ou recriados, os dados dos jogos permaneçam intactos.
+
+#### 4. Balanceamento de Carga:
+
+O design permite a Escala Horizontal. Através do bloco upstream no NGINX, podemos aumentar o número de instâncias do backend a qualquer momento, e o proxy distribuirá a carga automaticamente entre elas.
+
 
 ## Instalação
 
-1. Clone o repositório:
+### 1. Pré-requisitos: 
+
+   **Docker** e **Docker Compose** instalados.
+
+### 2. Subir o ambiente completo:
 
    ```bash
-   git clone https://github.com/fams/guess_game.git
-   cd guess-game
+   docker-compose up --build -d
    ```
 
-2. Crie um ambiente virtual e ative-o:
+### 3. Escalar o Backend: Para aumentar a capacidade de processamento:
 
    ```bash
-   python3 -m venv venv
-   source venv/bin/activate  # Linux/Mac
-   venv\Scripts\activate  # Windows
+   docker-compose up -d --scale backend=3
    ```
 
-3. Instale as dependências:
+### 4. Verificação de Status:
 
    ```bash
-   pip install -r requirements.txt
+   docker-compose ps
    ```
 
-4. Configure o banco de dados com as variáveis de ambiente no arquivo start-backend.sh
-    1. Para sqlite
+## Manutenção e Atualização
 
-        ```bash
-            export FLASK_APP="run.py"
-            export FLASK_DB_TYPE="sqlite"            # Use SQLITE
-            export FLASK_DB_PATH="caminho/db.sqlite" # caminho do banco
-        ```
+### Estratégia de Atualização por Imagem
 
-    2. Para Postgres
+Cada componente é definido por uma imagem Docker. Para atualizar um componente (ex: subir uma nova versão do Flask ou do Postgres): edite a versão da imagem no docker-compose.yml (ex: postgres:16-alpine) ou faça o build do novo código no Dockerfile.
 
-        ```bash
-            export FLASK_APP="run.py"
-            export FLASK_DB_TYPE="postgres"       # Use postgres
-            export FLASK_DB_USER="postgres"       # Usuário do banco
-            export FLASK_DB_NAME="postgres"       # Nome do Banco
-            export FLASK_DB_PASSWORD="secretpass" # Senha do banco
-            export FLASK_DB_HOST="localhost"      # Hostname
-            export FLASK_DB_PORT="5432"           # Porta
-        ```
-
-    3. Para DynamoDB
-
-        ```bash
-        export FLASK_APP="run.py"
-        export FLASK_DB_TYPE="dynamodb"       # Use postgres
-        export AWS_DEFAULT_REGION="us-east-1" # AWS region
-        export AWS_ACCESS_KEY_ID="FAKEACCESSKEY123456" 
-        export AWS_SECRET_ACCESS_KEY="FakeSecretAccessKey987654321"
-        export AWS_SESSION_TOKEN="FakeSessionTokenABCDEFGHIJKLMNOPQRSTUVXYZ1234567890"
-        ```
-
-5. Execute o backend
+Aplicar a mudança:
 
    ```bash
-   ./start-backend.sh &
+   docker-compose up --build -d
    ```
 
-6. Cuidado! verifique se o seu linux está lendo o arquivo .sh com fim de linha do windows CRLF. Para verificar utilize o vim -b start-backend.sh
+O Docker identifica qual serviço mudou e recria apenas aquele container, mantendo os volumes de dados e os outros serviços operacionais. Isso minimiza o tempo de inatividade.
 
-## Frontend
-No diretorio de frontend
+### Resiliência
 
-1. Instale o node com o nvm. Se não tiver o nvm instalado, siga o [tutorial](https://github.com/nvm-sh/nvm?tab=readme-ov-file#installing-and-updating)
+Todos os serviços utilizam a política ```restart: unless-stopped```. Isso garante que:
 
-    ```bash
-    nvm install 18.17.0
-    nvm use 18.17.0
-    # Habilite o yarn
-    corepack enable
-    ```
+Caso um container falhe, ele será reiniciado automaticamente.
 
-2. Instale as dependências do node com o npm:
-
-    ```bash
-    npm install
-    ```
-
-3. Exporte a url onde está executando o backend e execute o backend.
-
-   ```bash
-    export REACT_APP_BACKEND_URL=http://localhost:5000
-    yarn start
-   ```
+Se você parar os serviços manualmente com ```docker-compose stop```, eles permanecerão parados, respeitando o ciclo de vida do ambiente.
 
 ## Como Jogar
 
