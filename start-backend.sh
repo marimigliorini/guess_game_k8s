@@ -6,7 +6,7 @@ export FLASK_DB_TYPE="postgres"
 export FLASK_DB_USER="postgres"
 export FLASK_DB_NAME="postgres"
 export FLASK_DB_PASSWORD="secretpass"
-export FLASK_DB_HOST="localhost"
+export FLASK_DB_HOST=${FLASK_DB_HOST:-postgres-service}
 export FLASK_DB_PORT="5432"
 
 # Run app.py when the container launches

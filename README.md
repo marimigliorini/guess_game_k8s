@@ -12,82 +12,99 @@ Este é um simples jogo de adivinhação desenvolvido utilizando o framework Fla
 - As senhas são armazenadas  utilizando base64.
 - As adivinhações incorretas retornam uma mensagem com dicas.
   
-## Arquitetura e Design
+## Componentes Instalados
 
-A solução foi desenvolvida com foco em práticas modernas de DevOps e arquitetura de microsserviços.
+Essa aplicação foi disponibilizada em um cluster Kubernetes utilizando o ambiente k3d. A solução contempla frontend, backend e banco de dados PostgreSQL, além de autoescalonamento (HPA) para o backend.
 
-#### 1. Escolha de Serviços:
+#### 1. Postgres:
 
-- **Frontend** (NGINX + React): Atua como Proxy Reverso e servidor de ativos estáticos. Centraliza o tráfego na porta 80 e roteia requisições dinamicamente.
+- **Função:** Banco de dados relacional para persistência da aplicação.
 
-- **Backend** (Backend Flask): Responsável pela lógica do jogo e persistência. Desacoplado da interface, permitindo atualizações independentes.
+- **Deployment:** Cria o pod com a imagem oficial ```postgres:15```.
 
-- **DB** (Postgres): Banco de dados relacional para armazenamento seguro e estruturado dos dados do jogo.
+- **Service:** Exposto internamente como ```postgres-service```, permitindo que o backend se conecte.
 
-#### 2. Redes e Comunicação:
+#### 2. Backend:
 
-Foi utilizada uma rede interna do Docker Compose para isolar os serviços. O backend e o banco não expõem portas externamente, aumentando a segurança. O NGINX resolve dinamicamente o endereço do serviço web através do DNS interno do Docker, o que permite escalabilidade sem interrupções.
+- **Função:** API Flask que implementa a lógica do jogo.
 
-#### 3. Persistência de Dados:
+- **Deployment:** Inicialmente com 2 réplicas, usando a imagem ```marimigliorini/guess_game_backend:v3```.
 
-Volumes Nomeados (postgres_data) foram usados para mapear os dados do Postgres para o host. Isso garante que, mesmo se os containers forem destruídos ou recriados, os dados dos jogos permaneçam intactos.
+- **Service:** Exposto internamente como ```backend-service```, consumido pelo frontend.
 
-#### 4. Balanceamento de Carga:
+- **AutoScale (HPA):** Escala entre 2 e 10 réplicas conforme uso de CPU (limite de 70%).
 
-O design permite a Escala Horizontal. Através do bloco upstream no NGINX, podemos aumentar o número de instâncias do backend a qualquer momento, e o proxy distribuirá a carga automaticamente entre elas.
+#### 3. Frontend:
+
+- **Função:** Interface web para interação com o usuário.
+
+- **Deployment:** Usa a imagem ```marimigliorini/guess_game_frontend:v1```.
+
+- **Service:** Exposto externamente via NodePort na porta 8080, permitindo acesso direto pelo navegador.
+
+- **Configuração:** Consome o backend através do ```backend-service```.
+
+#### 4. Horizontal Pod Autoscaler (HPA):
+
+- **Função:** Monitora o uso de CPU dos pods do backend.
+
+- **Configuração:**
+
+   - Mínimo: 2 réplicas
+
+   - Máximo: 10 réplicas
+
+   - Escala quando a utilização média de CPU ultrapassa 70%.
+
+- **Benefício:** Garante alta disponibilidade e desempenho sob carga.
 
 
 ## Instalação
 
 ### 1. Pré-requisitos: 
 
-   **Docker** e **Docker Compose** instalados.
+   **k3d** e **kubectl** instalados.
 
-### 2. Subir o ambiente completo:
-
-   ```bash
-   docker-compose up --build -d
-   ```
-
-### 3. Escalar o Backend: Para aumentar a capacidade de processamento:
+### 2. Criar o cluster k3d:
 
    ```bash
-   docker-compose up -d --scale backend=3
+   k3d cluster create lab --port 8080:30080@loadbalancer
    ```
 
-### 4. Verificação de Status:
+### 3. Aplicar os manifestos:
 
    ```bash
-   docker-compose ps
+   kubectl apply -f ./k8s/
    ```
 
-## Manutenção e Atualização
-
-### Estratégia de Atualização por Imagem
-
-Cada componente é definido por uma imagem Docker. Para atualizar um componente (ex: subir uma nova versão do Flask ou do Postgres): edite a versão da imagem no docker-compose.yml (ex: postgres:16-alpine) ou faça o build do novo código no Dockerfile.
-
-Aplicar a mudança:
+### 4. Verificar recursos:
 
    ```bash
-   docker-compose up --build -d
+   kubectl get pods
+   kubectl get svc
+   kubectl get hpa
    ```
+   Aguarde até que todos os pods estejam com status **Running** (pode levar alguns minutos).
 
-O Docker identifica qual serviço mudou e recria apenas aquele container, mantendo os volumes de dados e os outros serviços operacionais. Isso minimiza o tempo de inatividade.
+### 5. Acessar a aplicação:
 
-### Resiliência
+   ```bash
+   http://localhost:8080
+   ``` 
 
-Todos os serviços utilizam a política ```restart: unless-stopped```. Isso garante que:
+## Imagens Docker Hub
 
-Caso um container falhe, ele será reiniciado automaticamente.
+- **Backend:** ```marimigliorini/guess_game_backend:v3```
 
-Se você parar os serviços manualmente com ```docker-compose stop```, eles permanecerão parados, respeitando o ciclo de vida do ambiente.
+- **Frontend:** ```marimigliorini/guess_game_frontend:v1```
+
+- **Banco:** ```postgres:15``` (imagem oficial)
 
 ## Como Jogar
 
 ### 1. Criar um novo jogo
 
-Acesse a url do frontend http://localhost:3000
+Acesse a url do frontend http://localhost:8080
 
 Digite uma frase secreta
 
@@ -98,7 +115,7 @@ Salve o game-id
 
 ### 2. Adivinhar a senha
 
-Acesse a url do frontend http://localhost:3000
+Acesse a url do frontend http://localhost:8080
 
 Vá para o endponint breaker
 
