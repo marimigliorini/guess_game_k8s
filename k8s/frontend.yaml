@@ -2,10 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: frontend-deployment
-  labels:
-    app: frontend
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: frontend
@@ -15,13 +13,17 @@ spec:
         app: frontend
     spec:
       containers:
-      - name: frontend
-        image: marimigliorini/guess_game_frontend:v1
-        ports:
-        - containerPort: 80
-        env:
-        - name: REACT_APP_BACKEND_URL
-          value: /api
+        - name: frontend
+          image: marimigliorini/guess_game_frontend:v3
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
 ---
 apiVersion: v1
 kind: Service
@@ -36,4 +38,3 @@ spec:
       targetPort: 80
       nodePort: 30080
   type: NodePort
-

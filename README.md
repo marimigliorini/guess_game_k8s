@@ -38,7 +38,7 @@ Essa aplicação foi disponibilizada em um cluster Kubernetes utilizando o ambie
 
 - **Função:** Interface web para interação com o usuário.
 
-- **Deployment:** Usa a imagem ```marimigliorini/guess_game_frontend:v1```.
+- **Deployment:** Usa a imagem ```marimigliorini/guess_game_frontend:v3```.
 
 - **Service:** Exposto externamente via NodePort na porta 8080, permitindo acesso direto pelo navegador.
 
@@ -70,6 +70,7 @@ Essa aplicação foi disponibilizada em um cluster Kubernetes utilizando o ambie
    ```bash
    k3d cluster create lab --port 8080:30080@loadbalancer
    ```
+   Aqui será criado um cluster chamado ```lab``` com o mapeamento de portas entre o host e o cluster.
 
 ### 3. Aplicar os manifestos:
 
@@ -96,7 +97,7 @@ Essa aplicação foi disponibilizada em um cluster Kubernetes utilizando o ambie
 
 - **Backend:** ```marimigliorini/guess_game_backend:v3```
 
-- **Frontend:** ```marimigliorini/guess_game_frontend:v1```
+- **Frontend:** ```marimigliorini/guess_game_frontend:v3```
 
 - **Banco:** ```postgres:15``` (imagem oficial)
 
